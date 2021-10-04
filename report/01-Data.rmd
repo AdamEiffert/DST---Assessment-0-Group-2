@@ -1,0 +1,35 @@
+---
+title: "Assessment 0 - 01: Data and Introduction"
+output: html_notebook
+---
+
+## The brief
+
+The brief was to:
+
+
+## The team
+
+
+## Library requirements
+
+```{r}
+if (!require("fs")) install.packages("fs")
+library("fs")
+```
+
+
+## The data
+
+
+### Get the data
+
+
+### Get the names for the data
+
+
+### Create the processed data output.
+
+
+### Summary:
+
