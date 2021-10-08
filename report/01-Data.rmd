@@ -21,9 +21,24 @@ library("fs")
 
 ## The data
 
+We each started by searching out a number of datasets. These varied greatly in context, volume and existing analysis. As such there are a number of datasets that should be downloaded. 
+
+To obtain this dataset in a convenient format, we will download it and process it into a standard form (containing headers).
+
+We place raw data in the `data` folder of our root. (Note: we are in the /report directory now). So our file system will look like this:
+
+* /data
+  * /data/raw
+    * /data/raw/4SICS.csv
+  * /data/processed
+    * /data/raw/4SICS.tab
+
+
 
 ### Get the data
-
+```{r}
+download.file("https://drive.google.com/file/d/14O_LdaJ-2lT7BN5pVjaFrtymk8L_tzRF/view?usp=sharing",path_wd("..","data","raw","4SICS.csv"))
+```
 
 ### Get the names for the data
 

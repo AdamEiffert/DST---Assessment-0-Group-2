@@ -1,0 +1,87 @@
+---
+title: "Assessment 0"
+author: "Daniel Lawson"
+date: "4/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# R part of assessment
+
+## Header content
+
+Required libraries:
+```{r}
+if (!require("tsne")) install.packages("tsne")
+if (!require("network")) install.packages("network")
+if (!require("sna")) install.packages("sna")
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("GGally")) install.packages("GGally")
+library("tsne")
+library("fs") # for cross-platform directories
+library(network) # For the final plot
+library(sna) # For the final plot
+library(ggplot2) # For the final plot
+library("GGally") # For ggnet
+library("knitr") # For kable 
+```
+
+Load the data:
+```{r}
+sicsdata=read.table(path_wd("..","data","raw","4SICS.tab"),header=TRUE)
+```
+
+
+## ICS Packet Captures
+
+### 4SICS Geek Lounge (20th, 21st and 22nd)
+4SICS was an annual ICS/SCADA conference across various industries, it is now known as CS3 STHLM. During the 2015 event attendees had access to ICS lab equipment including PLCs, RTUs and industrial networking equipment. Across the 3 days attendees were allowed attack and perform security tests that aren't used on live systems.
+#### Initial exploration
+
+#### Existing Analysis
+There is no existing analysis that I can find on this data set.
+
+#### Conclusions
+Due to the range of the hardware and simulations used, the data set is extensive with the types of ICS environments can be found and the protocols used. Now while this does provide some interesting analysis, as the data was collected while many different attendees were using it for their own ends, it is hard to tell what is normal behavior, what is malicious and what is defensive. This complexity is compiled by the number of different protocols and simulations that are used. So in all this data set could be an inserting one to return to, however due to it's complexity it will take a great amount of effort to parse correctly. It also has the downside that there is no public analysis (that I can find) on the data set and I am not able to compare analyses or build upon such analyses. 
+
+### DEFCON 23 ICS Village
+
+#### Initial exploration
+
+#### Existing Analysis
+
+#### Further Analysis
+
+#### Conclusions
+
+### Tommy Morris Data Sets 
+
+#### Set 1
+
+##### Initial exploration
+
+##### Existing Analysis
+
+##### Further Analysis
+
+##### Conclusions
+
+#### Set 3 
+
+##### Initial exploration
+
+##### Existing Analysis
+
+##### Further Analysis
+
+##### Conclusions
+
+
+## References
+
+4SICS Geek Lounge - https://www.netresec.com/?page=PCAP4SICS
+4SICS Geek Lounge - https://www.academia.edu/37587881/A_Comparison_of_ICS_Datasets_for_Security_Research_based_on_Attack_Paths
+
