@@ -14,9 +14,7 @@ The brief was to:
 Through the process of analysing cyber security datasets. To do this we gathered a number of resources together in the form of both datasets and methods to analyse these datasets. We each chose a datset that we thought would be interesting to analyse, as we believed that it would be better to look into more datasets rather than focusing on just one. 
 
 ## The team
-The team consisted of Adam, Bill and Oliver. Adam had experience with Git, R and Python, so took charge of setting up the Github repository. He chose to look at ICS datasets because he thinks they provide an interesting opportunity for ML algorithms. Bill had used a little R but was new to Git. He chose to look at a dataset of URLs, some of which were known phishing sites. The aim of Bills analysis was to compare the benign and phishing URLs, and investigate what derivable features could help with classification.
-
-and Oliver had experience in ...
+The team consisted of Adam, Bill and Oliver. Adam had experience with Git, R and Python, so took charge of setting up the Github repository. He chose to look at ICS datasets because he thinks they provide an interesting opportunity for ML algorithms. Bill had used a little R but was new to Git. He chose to look at a dataset of URLs, some of which were known phishing sites. The aim of Bills analysis was to compare the benign and phishing URLs, and investigate what derivable features could help with classification. Oliver prior experience with Python, but not with R. He wanted to use this project as an opportunity to gain more familiarity with R, hence he chose to work with it. He chose to look at a data set of a packet capture from a host infected with a botnet, in order to try to determine what exactly the host was doing while it was infected.
 
 ## Library requirements
 
