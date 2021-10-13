@@ -16,25 +16,21 @@ In order to run this notebook, you must first
 First, we must ensure that all the necessary libraries are installed and loaded.
 
 ```{r}
-if (!require("googledrive")) install.packages("googledrive")
 if (!require("data.table")) install.packages("data.table")
 if (!require("knitr")) install.packages("knitr")
 if (!require("gplots")) install.packages("gplots")
-library("googledrive")
 library("data.table")
 library("knitr")
 library("gplots")
 ```
 
 ## Analysis
-We download the data from Google Drive and load it into R (warning: the truncated full capture is a large file, about 5.5 GB).
+We load the data (which has already been downloaded in the introduction) into R.
 
 Note: this is not the original form the data came in, which was a .pcap file (referenced at the end). In order to obtain my .csv file from this pcap, load it into Wireshark, add columns for Source/Destination Ports and Packet Length, then export as a csv.
 
 ```{r}
-drive_deauth()
-drive_download(as_id("1FCv6atGZVrEqcJ4DwvDMgB675hGDRRIg"), path = "DonBotData.csv", overwrite = TRUE)
-fullbotnetdata <- fread("DonBotData.csv")
+fullbotnetdata <- fread("../data/processed/DonBotData.csv")
 ```
 
 Here we print off the heads of the data, to verify that they have loaded correctly.
