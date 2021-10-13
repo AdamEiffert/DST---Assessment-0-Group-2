@@ -182,8 +182,6 @@ pre code {
 <h2>Setup</h2>
 <p>In order to run this notebook, you must first</p>
 <p>First, we must ensure that all the necessary libraries are installed and loaded.</p>
-<pre class="r"><code>if (!require(&quot;googledrive&quot;)) install.packages(&quot;googledrive&quot;)</code></pre>
-<pre><code>## Loading required package: googledrive</code></pre>
 <pre class="r"><code>if (!require(&quot;data.table&quot;)) install.packages(&quot;data.table&quot;)</code></pre>
 <pre><code>## Loading required package: data.table</code></pre>
 <pre class="r"><code>if (!require(&quot;knitr&quot;)) install.packages(&quot;knitr&quot;)</code></pre>
@@ -195,22 +193,15 @@ pre code {
 <pre><code>## The following object is masked from &#39;package:stats&#39;:
 ## 
 ##     lowess</code></pre>
-<pre class="r"><code>library(&quot;googledrive&quot;)
-library(&quot;data.table&quot;)
+<pre class="r"><code>library(&quot;data.table&quot;)
 library(&quot;knitr&quot;)
 library(&quot;gplots&quot;)</code></pre>
 </div>
 <div id="analysis" class="section level2">
 <h2>Analysis</h2>
-<p>We download the data from Google Drive and load it into R (warning: the truncated full capture is a large file, about 5.5 GB).</p>
+<p>We load the data (which has already been downloaded in the introduction) into R.</p>
 <p>Note: this is not the original form the data came in, which was a .pcap file (referenced at the end). In order to obtain my .csv file from this pcap, load it into Wireshark, add columns for Source/Destination Ports and Packet Length, then export as a csv.</p>
-<pre class="r"><code>drive_deauth()
-drive_download(as_id(&quot;1FCv6atGZVrEqcJ4DwvDMgB675hGDRRIg&quot;), path = &quot;DonBotData.csv&quot;, overwrite = TRUE)</code></pre>
-<pre><code>## File downloaded:</code></pre>
-<pre><code>## * &#39;DonBotWithLengths.csv&#39; &lt;id: 1FCv6atGZVrEqcJ4DwvDMgB675hGDRRIg&gt;</code></pre>
-<pre><code>## Saved locally as:</code></pre>
-<pre><code>## * &#39;DonBotData.csv&#39;</code></pre>
-<pre class="r"><code>fullbotnetdata &lt;- fread(&quot;DonBotData.csv&quot;)</code></pre>
+<pre class="r"><code>fullbotnetdata &lt;- fread(&quot;../data/processed/DonBotData.csv&quot;)</code></pre>
 <p>Here we print off the heads of the data, to verify that they have loaded correctly.</p>
 <pre class="r"><code>kable(head(fullbotnetdata))</code></pre>
 <table>

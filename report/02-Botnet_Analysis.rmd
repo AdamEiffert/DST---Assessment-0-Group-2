@@ -30,7 +30,6 @@ We load the data (which has already been downloaded in the introduction) into R.
 Note: this is not the original form the data came in, which was a .pcap file (referenced at the end). In order to obtain my .csv file from this pcap, load it into Wireshark, add columns for Source/Destination Ports and Packet Length, then export as a csv.
 
 ```{r}
-drive_deauth()
 fullbotnetdata <- fread("../data/processed/DonBotData.csv")
 ```
 
