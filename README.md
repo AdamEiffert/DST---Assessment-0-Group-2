@@ -29,7 +29,7 @@ Requirements for the Rmd and ipynb files are given within each script.
 
 ## Evidence
 
-Our working is shown in our own directories,
+Our working is shown in our own directories:
 
 * Oliver_Evidence/
 * Bill_Evidence/
