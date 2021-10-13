@@ -16,11 +16,9 @@ In order to run this notebook, you must first
 First, we must ensure that all the necessary libraries are installed and loaded.
 
 ```{r}
-if (!require("googledrive")) install.packages("googledrive")
 if (!require("data.table")) install.packages("data.table")
 if (!require("knitr")) install.packages("knitr")
 if (!require("gplots")) install.packages("gplots")
-library("googledrive")
 library("data.table")
 library("knitr")
 library("gplots")
