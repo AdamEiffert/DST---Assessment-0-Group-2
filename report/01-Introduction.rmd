@@ -1,0 +1,50 @@
+---
+title: "Assessment 0 - 01: Introduction"
+output: html_notebook
+---
+
+## The brief
+
+The brief was to:
+
+* Give us an introductory experience to future assessment environments
+* Enable us to explore working in collaboration with peers
+* Provide us with opportunity to gain further programming experience.
+
+Through the process of analysing cyber security datasets. To do this we gathered a number of resources together in the form of both datasets and methods to analyse these datasets. We each chose a datset that we though it would be interesting to analyse, as we believed that it would be better to look into more datasets rather than focusing on just one. 
+
+## The team
+The team consisted of Adam, Bill and Oliver. Adam had experience with Git, R and Python, while Bill had experience in ... and Oliver had experience in ...
+
+## Library requirements
+
+```{r}
+if (!require("fs")) install.packages("fs")
+if (!require("googledrive")) install.packages("googledrive")
+library("fs")
+library("googledrive")
+```
+
+
+## The data
+
+We each started by searching out a number of datasets. These varied greatly in context, volume and existing analysis. As such there are a number of datasets that should be downloaded. 
+
+To obtain this dataset in a convenient format, we will download it and, if necessary, process it into a standard form.
+
+We place data in the raw or processed folder depending on the stage of processing, both of which are in the `data` folder of our root. So our file system will look like this:
+
+* /data
+  * /data/processed
+    * /data/processed/4SICS.csv
+    * /data/processed/Morris1.csv
+
+
+
+### Get the data
+```{r}
+drive_deauth()
+drive_download(as_id("14O_LdaJ-2lT7BN5pVjaFrtymk8L_tzRF"), path = "../data/processed/4SICS.csv", overwrite = TRUE)
+drive_download(as_id("1KD1MiHkJObkwE95mimI19q4SkxfZCHcy"), path = "../data/processed/Morris1.csv", overwrite = TRUE)
+``` 
+

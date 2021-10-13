@@ -1,49 +1,11 @@
 ---
-title: "Assessment 0 - 01: Data and Introduction"
-output: html_notebook
+title: "Data download"
+output: html_document
 ---
 
-## The brief
 
-The brief was to:
-
-
-## The team
-
-
-## Library requirements
-
-```{r}
-if (!require("fs")) install.packages("fs")
-if (!require("googledrive")) install.packages("googledrive")
-library("fs")
-library("googledrive")
-```
-
-
-## The data
-
-We each started by searching out a number of datasets. These varied greatly in context, volume and existing analysis. As such there are a number of datasets that should be downloaded. 
-
-To obtain this dataset in a convenient format, we will download it and process it into a standard form (containing headers).
-
-We place raw data in the `data` folder of our root. (Note: we are in the /report directory now). So our file system will look like this:
-
-* /data
-  * /data/raw
-    * /data/raw/4SICS.csv
-  * /data/processed
-    * /data/raw/4SICS.tab
-
-
-
-### Get the data
-```{r}
-destfile <- "D:/Adam/Bristol/Units/Year 4/Data Science Toolbox/Assessments/Asessment 0/DST---Assessment-0-Group-2/data/raw/4SICS.csv"
-drive_download(as_id(""))
-
-``` 
-
+## The Following is not required to run, rather is for documentation
+The following code is what I used to compile the Morris1 dataset from the 15 original datasets, I have provided the end result of this processing as it saves on processing overhead for me. 
 
 ### Get the names for the data
 ```{r}
@@ -83,17 +45,6 @@ write.table(cnames,
             )
 ```
 
-```{r}
-cnames=c('Packet Number','Time','Source IP','Destination IP',
-    'Protocol','Packet Length','Info')
-write.table(cnames,
-            file=path_wd("..","data","raw","4SICS.names"),
-            row.names=FALSE,
-            col.names=FALSE,
-            quote=FALSE
-            )
-```
-
 ### Create the processed data output.
 
 ```{r}
@@ -109,14 +60,3 @@ write.csv(DF,
             path_wd("..","data","processed","Morris1.csv"),
             quote=FALSE,row.names=FALSE)
 ```
-
-```{r}
-DF=read.csv(path_wd("..","data","raw","4SICS.csv"),header=TRUE)
-colnames(DF)=cnames
-write.csv(DF,
-            path_wd("..","data","processed","4SICS.csv"),
-            quote=FALSE,row.names=FALSE)
-```
-
-### Summary:
-
