@@ -1,0 +1,354 @@
+---
+title: "Assessment 0"
+author: "Oliver Stonehouse Klyne"
+date: "12/10/2021"
+output: html_document
+---
+
+# Malware Traffic Analysis
+## Introduction
+This is an analysis of a 2-hour long packet capture of the DonBot botnet. This is part of the CTU-13 dataset from the Czech Technical University, where a team of researchers in 2011 ran several specimens of malware in virtual machines and recorded all of the network traffic. The full packet capture (from the university's main router) is not available (for reasons of privacy), but a capture from the infected machine *is* available, as is a truncated version of the full capture which has had most of the data in the packets removed. These are what I will be using for my analysis. DonBot is a botnet which is primarily used to send spam emails. There were seven hosts being monitored here, of which one was infected with the botnet. The infected host had the IP address 147.32.84.165, while the clean hosts had the addresses 147.32.84.170, 147.32.84.134, 147.32.84.164, 147.32.84.36, 147.32.84.9 and 147.32.84.11. 
+
+## Setup
+
+In order to run this notebook, you must first 
+
+First, we must ensure that all the necessary libraries are installed and loaded.
+
+```{r}
+if (!require("googledrive")) install.packages("googledrive")
+if (!require("data.table")) install.packages("data.table")
+if (!require("knitr")) install.packages("knitr")
+if (!require("gplots")) install.packages("gplots")
+library("googledrive")
+library("data.table")
+library("knitr")
+library("gplots")
+```
+
+## Analysis
+We download the data from Google Drive and load it into R (warning: the truncated full capture is a large file, about 5.5 GB).
+
+Note: this is not the original form the data came in, which was a .pcap file (referenced at the end). In order to obtain my .csv file from this pcap, load it into Wireshark, add columns for Source/Destination Ports and Packet Length, then export as a csv.
+
+```{r}
+drive_deauth()
+drive_download(as_id("1FCv6atGZVrEqcJ4DwvDMgB675hGDRRIg"), path = "DonBotData.csv", overwrite = TRUE)
+fullbotnetdata <- fread("DonBotData.csv")
+```
+
+Here we print off the heads of the data, to verify that they have loaded correctly.
+
+```{r}
+kable(head(fullbotnetdata))
+```
+
+We start by performing some analysis on the data from the infected machine, to try to see exactly what the botnet is doing. First, we make a table of the protocols used:
+
+```{r}
+protocols <- sort(table(fullbotnetdata[, Protocol], dnn="Protocol"), decreasing=TRUE)
+kable(protocols)
+```
+
+Unsurprisingly, the vast majority of the traffic sent is TCP. This is what I will be focusing on. Now, I will consider only the TCP traffic sent *from* the infected host, and look at who it is talking to.
+
+```{r}
+botnetsent <- fullbotnetdata[Source == "147.32.84.165"]
+tcpsent <- botnetsent[Protocol == "TCP"]
+tcpdests <- tcpsent[, .(Destination, DestPort)]
+destipcount <- (tcpdests[, .N, by = Destination])[order(-N)]
+largedests <- destipcount[6:nrow(destipcount)][N >= 100]
+largecount <- largedests[, sum(N)]
+mediumdests <- destipcount[(N < 100) & (N >= 10)]
+mediumcount <- mediumdests[, sum(N)]
+smalldests <- destipcount[N < 10]
+smallcount <- smalldests[, sum(N)]
+groupedcount <- rbindlist(list(destipcount[1:5], list("Other IPs visited >100 times", largecount), list("IPs visited 10-99 times", mediumcount), list("IPs visited 1-9 times", smallcount)))
+par(mar=c(4,12,0,4))
+barplot2(rev(groupedcount[, N]), names=rev(groupedcount[, Destination]), horiz=TRUE, las=1)
+```
+
+There are 5 destination addresses which appear noticeably more frequently than the others, and I have shown each of these individually on the bar chart. I've split the rest into three groups - those which appear more than 100 times, those which appear 10-99 times, and those which appear less than 10 times.
+
+Now, I will do a similar thing with the destination ports instead. In total there are 73 different destination ports, which is a much more manageable number. This means that I can actually make a plot of the ports and their frequencies (with a logarithmic scale, since some ports appear vastly more often than others).
+```{r}
+destportcount <- (tcpdests[, .N, by = DestPort])[order(DestPort)]
+plot(destportcount[, DestPort], destportcount[, N], log="y", xlab="Destination Port", ylab="Frequency")
+```
+
+From this plot, we can see that most of the destination ports fall into one of two groups. There are a number of ports scattered across the range (numbers 1000 to 5000) which are used around 50 times each, and there are a lot of ports in the low 2000s which are used 2-4 times each. There are also several ports which do not fall into these categories, which are as follows:
+
+* Port 25 (used for SMTP email) is used 14853 times, making it responsible for around 73% of outgoing traffic.
+* Port 5678 is used 3672 times, 18% of outgoing traffic.
+* Port 139 (used for local file sharing) is used 56 times (about as often as those in the first group, but not in the same range)
+* Port 3640 is used 25 times (this could be a part of the first group, but it's used much less often than any of those ports)
+* Port 80 (used for HTTP) is used 13 times.
+* Port 2869 is used 6 times.
+
+Using these groups (and single ports), we can make a heatmap of destination ports and IP addresses:
+```{r}
+unusualports <- c(25, 80, 139, 2869, 3640, 5678)
+scatteredports <- c(1159, 1297, 1388, 1466, 1471, 1539, 1733, 1747, 1842, 1883, 2082, 2128, 2231, 2362, 2373, 2450, 2566, 2628, 2765, 2826, 2858, 3316, 3376, 3509, 3610, 3710, 3811, 3981, 4014, 4354, 4367, 4783)
+denseports <- c(2048, 2049, 2050, 2051, 2052, 2053, 2054, 2055, 2056, 2057, 2058, 2059, 2060, 2061, 2062, 2063, 2064, 2065, 2066, 2067, 2068, 2069, 2070, 2071, 2072, 2093, 2094, 2096, 2097, 2098, 2099, 2100, 2101, 2102, 2103)
+groupdestports <- function(destport) {
+  if (destport %in% unusualports) {
+    group <- as.character(destport)
+  } else if (destport %in% scatteredports) {
+    group <- "Scattered"
+  } else {
+    group <- "Dense"
+  }
+  return(group)
+}
+mostcommonIPs <- c("91.212.135.158", "90.177.113.3", "64.59.134.8", "216.32.180.22", "24.71.223.11")
+groupdestIPs <- function(destIP) {
+  if (destIP %in% mostcommonIPs) {
+    group <- destIP
+  } else if (destIP %in% largedests[, Destination]) {
+    group <- "Other IPs visited >100 times"
+  } else if (destIP %in% mediumdests[, Destination]) {
+    group <- "IPs visited 10-99 times"
+  } else {
+    group <- "IPs visited 1-9 times"
+  }
+  return(group)
+}
+groupedtcpdests <- copy(tcpdests)[, Destination := mapply(groupdestIPs, Destination)][, DestPort := mapply(groupdestports, DestPort)]
+```
+
+```{r}
+heatmap(table(groupedtcpdests), Rowv=NA, Colv=NA)
+```
+
+This naive heatmap is not very useful: it simply shows the most common port (or group of ports) for each destination address. To fix this, we instead use a heatmap with a logarithmic colour scale:
+```{r}
+heatmap(log2(1 + table(groupedtcpdests)), Rowv=NA, Colv=NA)
+```
+
+This is much more useful, and there are several things which we can immediately notice:
+
+* The destination address 91.212.135.158 (which was the most common) is only communicated with on port 5678, and is the only destination to use this port.
+* The next most common destination (90.177.113.3) is communicated with on the various scattered ports and also port 3640, and is the only destination to use any of these ports. This means that it may have been a mistake to separate out 3640 from the rest of the scattered ports, but it is still unclear why it was used so much less often than them.
+* All of the other destination addresses which were visited >100 times used port 25 exclusively.
+* The addresses visited 10-99 times were mostly contacted on port 25, but port 139 and the densely clustered ports in the low 2000s were also used with at least one of them. (it is perhaps unsurprising that the densely clustered ports showed up in this section, since they were used 93 times in total)
+* Similarly, the addresses visited 1-9 times were also mostly contacted on port 25, but ports 2869 and 80 were also used in at least one case.
+
+Each of these things will be investigated further in turn.
+
+### Various addresses and Port 25
+
+The vast majority of the network traffic sent by the infected host was TCP traffic on port 25, sent to 1545 different IP addresses. This port is typically used for SMTP email, but all of this traffic was bare TCP. Now, I will take a look at the information associated with a few of these packets:
+```{r}
+port25sent <- tcpsent[DestPort == 25]
+port25info <- port25sent[, Info]
+print(head(port25info, 10))
+```
+Immediately we see that all of these are SYN packets. It is easy to verify that this is in fact true for all of the packets sent to port 25:
+```{r}
+print(sum(grepl("\\[SYN\\]", port25info))) # Prints the number of SYN packets sent to port 25
+print(length(port25info)) # Prints the total number of packets sent to port 25
+```
+A natural question then arises: were any of these SYN packets acknowledged? To answer this question, we take a look at the packets received by the infected host which were sent from port 25:
+```{r}
+botnetreceived <- fullbotnetdata[Source != "147.32.84.165"]
+print(length(botnetreceived[SrcPort == 25, No.]))
+```
+So we see that the infected host never received any packets from port 25 at all, and certainly can't have had any of its SYN packets acknowledged. This suggests that whatever it was attempting to do here was not successful. Now, I will analyse the times at which each of these packets were sent.
+```{r}
+port25clean <- port25sent[!grepl("Retransmission|Dup", Info)] # Removing retransmissions and duplicates from the sample
+hist(port25clean[, Time], xlab="Time", main = "Times at which packets were sent to port 25")
+```
+
+This histogram is not especially enlightening - all it really shows us is that these packets were sent approximately uniformly for the full duration of the experiment. To get actually interesting results, we will need to focus on a much narrower time period.
+
+Entirely arbitrarily, I have chosen to focus on the time period from 2000 seconds to 2120 seconds. 
+```{r}
+port25narrow <- port25clean[(Time >= 2000) & (Time < 2120)]
+hist(port25narrow[, Time] - 2000, xlim = c(0,120), xlab="Time after 2000 seconds", main="Times at which packets were sent to port 25")
+```
+
+This histogram is more interesting - immediately we see that the distribution of times is highly non-uniform, with some 10-second stretches not having a single packet sent in them. However, we can do even better by increasing the number of bars:
+```{r}
+hist(port25narrow[, Time] - 2000, xlim = c(0,120), xlab="Time after 2000 seconds", main="Times at which packets were sent to port 25", breaks=120)
+```
+
+Here, each bar represents one second. We see immediately that of the 120 seconds under consideration, packets were only sent (to port 25) in 14 of them. When the host *did* send packets to port 25, it typically sent a number of them in quick succession. 
+
+Now I will analyse the times between these spikes, by looking at the times between successive packets being sent:
+```{r}
+port25times <- port25clean[, Time]
+port25diffs <- port25times[2:length(port25times)] - port25times[1:length(port25times) - 1]
+plot(port25times[1:length(port25times)-1], port25diffs, xlab="Time", ylab="Time until the next packet")
+```
+
+We see that the gaps tend to fall into one of a few bands:
+
+* 6-7 seconds (most common)
+* 11-14 seconds (note that this is close to double the most common gap length)
+* 18-21 seconds (triple the most common gap length)
+* ~2 seconds (less common, and no obvious relation to the other gap lengths)
+
+We now know that the traffic sent from the infected host to port 25 is:
+
+* Entirely composed of TCP SYN packets
+* Never responded to
+* Sent in short bursts
+* Highly periodic
+
+Also, performing a whois lookup on the three most common IP addresses show that two of them belong to Shaw Communications (a Canadian telecommunications company) and one belongs to Microsoft. Doing the same thing with some of the less common addresses (chosen arbitrarily) shows that they also belong to IT/telecommunications companies (I found Yahoo, Fujitsu and a now-defunct company called CallPlus), most of which provide consumer email services.
+
+Therefore, I suspect what is happening here is that the botnet is trying to find an email server with port 25 open so that it can send its spam emails. Since none of its SYN packets ever receive a response, it seems to have been unsuccessful.
+
+### 91.212.135.158 and Port 5678
+
+About 2/3 of the remaining traffic is sent to port 5678 at 91.212.135.158. This port doesn't seem to be typically used for anything relevant here. Now, let's look at the times at which these packets were sent:
+
+```{r}
+port5678sent <- tcpsent[DestPort == 5678]
+port5678clean <- port5678sent[!grepl("Retransmission|Dup", Info)]
+hist(port5678clean[, Time], xlab="Time", main = "Times at which packets were sent to port 5678", breaks=100)
+```
+
+We can see that there is some traffic throughout the whole of the experiment, but there is vastly more right at the beginning (it's not apparent from this histogram, but in fact the spike at the beginning happens within the first 3 seconds of the experiment). I will consider the spike at the beginning and the lower level of traffic later separately for now.
+
+#### Spike within the first 3 seconds
+
+Here is another histogram of this traffic, this time showing only the first 3 seconds of the experiment:
+```{r}
+hist(port5678clean[Time < 3, Time], xlab="Time", main = "Times at which packets were sent to port 5678", breaks=100)
+```
+
+We see a similar stop-and-start behaviour to what we saw on port 25, but this time it's on a much shorter timescale. Again, I will look at the times between successive packets sent:
+```{r}
+port5678times <- port5678clean[, Time]
+port5678early <- port5678times[port5678times < 3]
+port5678earlydiffs <- port5678early[2:length(port5678early)] - port5678early[1:length(port5678early) - 1]
+plot(port5678early[1:length(port5678early)-1], port5678earlydiffs, xlab="Time", ylab="Time until the next packet")
+```
+
+It is somewhat erratic at the beginning and towards to the end, but in the middle we see that there is consistently a burst of traffic every ~0.06 seconds.
+
+#### Lower-level traffic throughout the experiment
+
+We make the same plots as before, but with the rest of the data:
+
+```{r}
+port5678late <- port5678times[port5678times > 3]
+port5678latediffs <- port5678late[2:length(port5678late)] - port5678late[1:length(port5678late) - 1]
+hist(port5678late, xlab="Time", main = "Times at which packets were sent to port 5678", breaks=100)
+plot(port5678late[1:length(port5678late)-1], port5678latediffs, xlab="Time", ylab="Time until the next packet")
+```
+
+We see here that the infected host communicates with this IP address approximately every 30 seconds (the gap between successive intervals of communication is typically either 28 or 32 seconds).
+
+#### Both parts together again
+
+Now that we know when and how often the infected host communicates with this address, we must ask: what is it saying, and what does it hear back? Here's a histogram showing the lengths of the packets sent:
+```{r}
+hist(port5678clean[, Length], xlim=c(0,250), xlab="Length", main="Lengths of packets sent to 91.212.135.158")
+```
+
+We see that the vast majority of packets have length ~60, but there are a few longer ones with length ~225. Inspecting examples of each of these in Wireshark shows that the short packets seem to all be TCP SYN or ACK packets, and do not contain any data outside of that. The longer packets, on the other hand, appear to contain login details (the same in each them) for cvut.cz, which is the website of the university where the experiment was run.
+
+Now, I will look at what the infected host received in response to these messages:
+```{r}
+port5678received = botnetreceived[SrcPort == 5678]
+hist(port5678received[, Length], xlim=c(0,5000), xlab="Length", main="Lengths of packets received from 91.212.135.158", breaks=100)
+```
+
+We see that there are a lot of very short packets, then lots of long packets of various lengths (especially at ~1500 and ~3000).
+Inspecting the short packets shows that they aren't interesting - they are just ACK packets without any other data. The longer packets are more interesting, though (despite the varying lengths, they all contain about the same stuff - just different amounts of it). They contain various data, including:
+
+* Lists of first names (separate male and female lists)
+* Lists of surnames
+* Lists of email addresses
+* Lists of dubious-sounding websites
+* Spam email templates
+* Bizarrely, what appears to be the full text of multiple Wikipedia articles
+
+Performing a whois lookup on the 91.212.135.158 address shows that it is owned by Cloudferro, a Polish cloud service provider.
+
+Now, we know that:
+
+* The infected host communicates with this server a lot at the beginning of the experiment (and in fact, the very first packet it sends is to this server)
+  * During this time, it communicates in short bursts with a regular gap between each of them. I suspect that this is probably because the server is also managing other infected hosts, but I don't know enough about this to be sure.
+* It remains in contact at regular intervals for the whole duration of the experiment
+* It provides the infected host with data which can be used to put together spam emails
+
+I therefore conclude that this is probably the command and control server for this botnet.
+
+### 90.177.113.3 and the scattered ports
+
+Again, we make the same plots to show the time at which packets were sent and the intervals between them:
+```{r}
+scatteredportssent <- tcpsent[Destination == "90.177.113.3"]
+scatteredtimes <- scatteredportssent[, Time]
+scattereddiffs <- scatteredtimes[2:length(scatteredtimes)] - scatteredtimes[1:length(scatteredtimes) - 1]
+hist(scatteredtimes, xlab="Time", main = "Times at which packets were sent to 90.177.113.3", breaks=100, xlim=c(1200,1500))
+plot(scatteredtimes[1:length(scatteredtimes)-1], scattereddiffs, xlab="Time", ylab="Time until the next packet")
+```
+
+We see that this connection was active from ~1275 seconds to ~1450 seconds, and that there are many irregular gaps between packets with no obvious periodicity.
+
+However - two things are apparent now that I look at this section of the data more closely:
+```{r}
+print(fullbotnetdata[Source=="90.177.113.3", No.][1])
+kable(head(scatteredportssent))
+```
+
+The first is the infected host received a packet from 90.177.113.3 before it ever sent one there. The second is that every one of the packets the host sent had the same source port, 3389. Together, this means that this was actually a connection initiated by 90.177.113.3, not by the infected host. Port 3389 is typically used for Windows Remote Desktop, so this suggests that someone was operating this computer remotely. I suspect that this was probably one of the researchers running the experiment, but I can't rule out the possibility that it was the controller of the botnet (the 90.177.113.3 IP address belongs to O2 Czech Republic, which doesn't really help).
+
+### Densely clustered ports
+
+First, we need to check exactly which IP addresses these packets were sent to:
+```{r}
+denseportssent <- tcpsent[DestPort %in% denseports]
+kable(head(denseportssent))
+```
+
+We see that these were all sent to the same address - 147.32.96.45. This is a local address, another device on the university's network. Moreover, we see that they all have the same source port, 21. This suggests that the connection was initiated by the other device, which is easy to verify:
+```{r}
+print(fullbotnetdata[Source=="147.32.96.45", No.][1])
+```
+
+Port 21 is used for FTP, so it looks like another computer on the university's network was repeatedly trying to connect to an FTP server on the host, but this was rejected (note that the infected host always responds with a RST packet). I don't think this has anything to do with the botnet, so I won't dig into this any further.
+
+### Port 80
+
+Again, we need to see which IP addresses these packets were sent to:
+```{r}
+port80sent <- tcpsent[DestPort == 80]
+kable(head(port80sent))
+kable(table(port80sent[, Destination], dnn="Destination"))
+```
+
+We have three different destination IP addresses - 195.113.232.73, 195.113.232.90 and 203.106.50.35. The first two belong to CESNET, which is an association of Czech universities which operates electronic infrastructure. The third belongs to Telekom Malaysia, a Malaysian telecommunications company.
+
+The communication with CESNET is entirely unsurprising, but why Telekom Malaysia? It doesn't seem to have anything to do with the botnet, though - 203.106.50.35 contacted the infected host first (with a SYN/ACK packet which was not responding to any previous SYN), and this wasn't one of the IPs that the infected host contacted on port 25. Since it seems to be unrelated to the malware, I won't spend any more time on this.
+
+### Port 139
+
+```{r}
+port139sent <- tcpsent[DestPort == 139]
+kable(head(port139sent))
+print(fullbotnetdata[SrcPort == 139, No.][1])
+```
+
+Like the FTP connection we've already seen, this is another local connection (147.32.84.171 is another IP address on the university's network). 
+
+### Port 2869
+
+```{r}
+port2869sent <- tcpsent[DestPort == 2869]
+kable(port2869sent)
+```
+
+This is another local connection, which lasted for 9 seconds starting at time 2427. The infected host sent a SYN packet, it was retransmitted several times, and no response was ever received. There isn't really anything to go on here, so I can't really say what happened.
+
+## Previous Analysis
+
+I was unable to find any previous exploratory analysis of this dataset - however, it was part of the dataset used in this paper on comparing botnet detection methods: http://www.sciencedirect.com/science/article/pii/S0167404814000923
+
+## References
+
+Data: https://mcfp.felk.cvut.cz/publicDatasets/CTU-Malware-Capture-Botnet-47/ (the file used is botnet-capture-20110816-donbot.pcap)
