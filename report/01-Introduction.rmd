@@ -14,7 +14,12 @@ The brief was to:
 Through the process of analysing cyber security datasets. To do this we gathered a number of resources together in the form of both datasets and methods to analyse these datasets. We each chose a datset that we though it would be interesting to analyse, as we believed that it would be better to look into more datasets rather than focusing on just one. 
 
 ## The team
-The team consisted of Adam, Bill and Oliver. Adam had experience with Git, R and Python, while Bill had experience in ... and Oliver had experience in ...
+The team consisted of Adam, Bill and Oliver. Adam had experience with Git, R and Python, so took charge of setting up the Github repository. He chose to look at ICS datasets because he thinks they provide an interesting opportunity for ML algorithms.
+
+
+while Bill had experience in ... 
+
+and Oliver had experience in ...
 
 ## Library requirements
 
