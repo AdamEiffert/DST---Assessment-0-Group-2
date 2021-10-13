@@ -38,7 +38,7 @@ We place data in the raw or processed folder depending on the stage of processin
   * /data/processed
     * /data/processed/4SICS.csv
     * /data/processed/Morris1.csv
-
+    * /data/processed/DonBotData.csv
 
 
 ### Get the data
@@ -46,5 +46,6 @@ We place data in the raw or processed folder depending on the stage of processin
 drive_deauth()
 drive_download(as_id("14O_LdaJ-2lT7BN5pVjaFrtymk8L_tzRF"), path = "../data/processed/4SICS.csv", overwrite = TRUE)
 drive_download(as_id("1KD1MiHkJObkwE95mimI19q4SkxfZCHcy"), path = "../data/processed/Morris1.csv", overwrite = TRUE)
+drive_download(as_id("1FCv6atGZVrEqcJ4DwvDMgB675hGDRRIg"), path = "../data/processed/DonBotData.csv", overwrite = TRUE)
 ``` 
 
