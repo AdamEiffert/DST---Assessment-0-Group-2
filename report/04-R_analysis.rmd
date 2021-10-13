@@ -1,7 +1,7 @@
 ---
 title: "Assessment 0"
-author: "Daniel Lawson"
-date: "4/10/2021"
+author: "Adam Eiffert"
+date: "11/10/2021"
 output: html_document
 ---
 
@@ -20,6 +20,9 @@ if (!require("network")) install.packages("network")
 if (!require("sna")) install.packages("sna")
 if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("GGally")) install.packages("GGally")
+if (!require("lessR")) install.packages("lessR")
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("gplots")) install.packages("gplots")
 library("tsne")
 library("fs") # for cross-platform directories
 library(network) # For the final plot
@@ -27,61 +30,195 @@ library(sna) # For the final plot
 library(ggplot2) # For the final plot
 library("GGally") # For ggnet
 library("knitr") # For kable 
+library("lessR") # 
+library("dplyr")
+library("gplots")
 ```
 
 Load the data:
 ```{r}
-sicsdata=read.table(path_wd("..","data","raw","4SICS.tab"),header=TRUE)
+sicsdata=read.csv(path_wd("..","data","processed","4SICS.csv"),quote="",header=TRUE)
+mor1data=read.csv(path_wd("..","data","processed","Morris1.csv"),header=TRUE)
 ```
 
-
 ## ICS Packet Captures
+The data analysed in this document relate to ICS cyber security data sets. ICS environments provide interesting variations of data sets for several reasons. First, there are a number of very different type of data that you can collect from ICS environments, which not only include those methods that can be found in IT environments (such as packet captures, and server logs), but also include data received from process sensors and outputs of various controllers. Looking at ICS data, there is an added layer of complexity as the process actuators can malfunction and so it can be hard to tell if the changes in sensor values are caused by desegregation in these actuators or a malicious attack using the controllers. The protocols used in ICS environments are numerous and, while many have similar functions, these protocols have their own nuances which can be analysed. Many fo the protocols are real-time and are used constantly, which gives a very detailed insight into the network at any instance and also provides a greater quantity of data for us to analyse. Another symptom of the ICS environment is that much of the data forms a consistent pattern with when messages are sent and received by devices, which can provide some interesting analysis. Finally, many of the ICS environments have their own quirks and so being able to analyse these and create models that can possibly be used across these environments. 
 
 ### 4SICS Geek Lounge (20th, 21st and 22nd)
 4SICS was an annual ICS/SCADA conference across various industries, it is now known as CS3 STHLM. During the 2015 event attendees had access to ICS lab equipment including PLCs, RTUs and industrial networking equipment. Across the 3 days attendees were allowed attack and perform security tests that aren't used on live systems.
+
 #### Initial exploration
+Here we will only look at one of the three datasets. The dataset we are using here was collected on the 22nd.
+```{r}
+kable(head(sicsdata,n=10))
+kable(head(table(sicsdata$Source.IP),n=10))
+kable(tail(table(sicsdata$Source.IP),n=10))
+```
+As we can see, due to the use of commas in the packet information, this has led to some of the data not being formatted correctly for the source IP label. While the data set can be reformatted to remove this issue, I have not done this here. On top of this, some of the entries are MAC addresses rather than IP addresses, this is because some protocols such as ARP and ICMP are relayed without a source IP address. To account for these, I have filtered the data to exclude packets to ignore such erroneous entries. 
+
+```{r}
+cleansicsdata=subset(sicsdata, Source.IP != "")
+cleansicsdata=subset(cleansicsdata, Packet.Length != "")
+sourcesicsdata<-subset(cleansicsdata, Protocol != "ARP")
+sourcesicsdata=subset(sourcesicsdata, Protocol != "ICMP")
+sourcesicsdata=subset(sourcesicsdata, Protocol != "ICMPv6")
+sourcesicsdata=subset(sourcesicsdata, Protocol != "LOOP")
+```
+We can check that the code has removed the unwanted entries.
+```{r}
+kable(head(table(sourcesicsdata$Source.IP),n=10))
+```
+Unfortunately, I have not been able to find a way to remove the source IPs with the description 'Application Data', so we will have to just ignore these from the following analyses. 
+
+We will now start to analyse the data. All of the data we will analyse will be categorical variables.
+We will start by looking at source and destination IPs. This allows us to see what devices are talking to each other. In an ICS environment we would expect to see the same devices communicating with each other and some of these interactions being asymmetric.
+```{r}
+sIPdIP=select(sourcesicsdata,Source.IP,Destination.IP)
+heatmap.2(log(table(sIPdIP)+1),trace='none', margins = c(8,8), xlab='Source IP', ylab='Destination IP')
+```
+Here we can see what the more active IP addresses are, with many of them being in the 192.168.2.0 subnet. We can also see that the data is fairly symmetrical however there were some discrepancies in this symmetry such as for 192.168.2.21, which doesn't send many packets but receives a large number. This means that this particular device is a data collection server such as a data historian. 
+
+By scaling the columns and rows we can see the proportion of packets that are sent / received by certain IP addresses.
+```{r}
+heatmap.2(log(table(sIPdIP)+1),trace='none',scale = 'row',margins = c(8,8), xlab='Destination IP', ylab='Source IP',main = 'Source IP scaled')
+heatmap.2(log(table(sIPdIP)+1),trace='none',scale = 'column',margins = c(8,8), xlab='Destination IP', ylab='Source IP', main='Destination IP scaled')
+```
+Here we can see that there are number of IP addresses that only send packets to one or a handful of destination IPs, for example 10.100.152.119 and 10.100.152.15 only send packets to 10.10.10.20. This means that if these devices start sending packets to other devices then this would be a strong indicator that something is awry in the network. In the heat map with the scaled destination IP addresses, you can see that 93.158.94.10 only receives packets from 10.100.158.185. 
+
+Now we will compare source IP address and the protocols used.
+```{r}
+sIPprodata=select(cleansicsdata,Source.IP,Protocol)
+protosicsdata = names(head(sort(table(cleansicsdata$Protocol), decreasing=TRUE),n=20))
+sIPpro = filter(sIPprodata, Protocol == protosicsdata[1])
+for (n in c(2:20)){
+  sIPpro = rbind(sIPpro,filter(sIPprodata, Protocol == protosicsdata[n]))
+}
+heatmap.2(log(table(sIPpro)+1),trace='none', margins = c(8,8), xlab='Protocol', ylab='Source IP')
+head(sort(table(cleansicsdata$Protocol), decreasing=TRUE),n=10)
+```
+Here I have looked at the top 20 most used protocols and the source IP addresses. Note that in this graph, many of the source addresses have not been listed due to the number of unique data values. As such, we will not be able to provide examples relating to specific Source IPs, although this could be done by using a Two-table. I have not used on here due to it's size. 
+```{r}
+heatmap.2(log(table(sIPpro)+1),trace='none',margins = c(8,8), xlab='Protocol', ylab='Source IP', scale = 'column', main='Scaled for Protocol')
+heatmap.2(log(table(sIPpro)+1),trace='none', margins = c(8,8), xlab='Protocol', ylab='Source IP', scale = 'row', main='Scaled for Source IP')
+```
+In the heatmap which is scaled for protocols, we can see that there are large ranges of IPs that do not produce either TCP or ARP packets. Note that the MAC address values (found in the Source IP attribute), do not produce TCP packets, while no IP addresses produce ARP packets. This is not surprising as ARP is used to find a certain device (noted by it's MAC address) is on what IP address, which means no IP addresses should be broadcasting ARP packets. If we look at the heat map scaled for source IPs, we can see that TCP is one of the most common protocols used by most IP addresses along with ICMP. While the MAC address value exclusively use ARP, except one which exclusively uses LOOP. 
+
+Possible future analysis:
+
+* Graphical analysis of Destination IP vs Protocols
+* Numerical analyses of Protocols/Source IP/Destination IP and Packet length
+* Graphical analyses of Packet Length/Protocols over time for a certain Source IP/Destination IP  
 
 #### Existing Analysis
 There is no existing analysis that I can find on this data set.
 
 #### Conclusions
-Due to the range of the hardware and simulations used, the data set is extensive with the types of ICS environments can be found and the protocols used. Now while this does provide some interesting analysis, as the data was collected while many different attendees were using it for their own ends, it is hard to tell what is normal behavior, what is malicious and what is defensive. This complexity is compiled by the number of different protocols and simulations that are used. So in all this data set could be an inserting one to return to, however due to it's complexity it will take a great amount of effort to parse correctly. It also has the downside that there is no public analysis (that I can find) on the data set and I am not able to compare analyses or build upon such analyses. 
+Due to the range of the hardware and simulations used, the data set is extensive with the types of ICS environments can be found and the protocols used. Now while this does provide some interesting analysis, as the data was collected while many different attendees were using it for their own ends, it is hard to tell what is normal behavior, what is malicious and what is defensive. This complexity is compiled by the number of different protocols and simulations that are used. So in all this data set could be an inserting one to return to, however due to it's complexity it will take a great amount of effort to parse correctly. It also has the downside that there is no public analysis (that I can find) on the data set and I am not able to compare analyses or build upon such analyses. On top of this due to the formatting of the csv, it has lead to some of the data being harder parse. For example, when looking at the source IP, some of the entries contain the end of part of the previous packet's information. However, once I have formatted the data correctly, this will no longer be an issue. All of the data is categorical which greatly limits the amount of analysis we can perform on this data.
 
-### DEFCON 23 ICS Village
-
-#### Initial exploration
-
-#### Existing Analysis
-
-#### Further Analysis
-
-#### Conclusions
+In all, this dataset requires a fair amount of formatting before a complete analysis can be performed. On top of this, because the data is gathered from a minimally documented environment (when is an attack taking place?) it would be hard to train any useful models using this data. However, this could be a good dataset to test any trained models on due to the range os events that will have been performed on this environment. 
 
 ### Tommy Morris Data Sets 
+Tommy Morris is a Professor at the University of Alabama who, at the time of the release of the datasets, was working at Mississippi State University. There are 5 different datasets collected on various environments. These datasets each look at slightly different aspects of ICS networks, inclduing the various environments and the protocols used. Each dataset also includes slightly different formats of information, for example set 1 only has values collected from IEDs, while many of the others include network traffic as well. Each dataset is labeled with the type of traffic (normal or malicious), which makes it very good for training models. 
 
 #### Set 1
+Here I will look at data set 1, with binary classification. Data set 1 also has a 3 class and multiclass classification for network traffic (e.g. natural events on top of normal and malicious). 
+
+In this dataset, there are 128 different features with 29 measures for each IED (R[1:4]), and the other features are control panel logs, Snort alerts and relay logs, with the final attribute being the label. The scenario in which this data was collected was a small scale simulation of a power generator. The data is split into 15 different files, however in the formatting of the data, in 01-Data, I compiled these into a single file. 
 
 ##### Initial exploration
+```{r}
+kable(head(mor1data,n=5))
+```
+Due to the number of attributes we will select a few to analyse here. We will analyse the following attributes of R1 under normal conditions and unnatural conditions:
+
+* Voltage Angle A
+* Voltage Magnitude A
+* Current Angle A
+* Current Magnitude A
+
+```{r}
+mor1=select(mor1data,R1voltAngleA,R1voltMagA,R1curAngleA,R1curMagA,marker)
+mor1norm=filter(mor1,marker=='Natural')
+```
+Above we have selected the attributes of interest, filtered the normal traffic into another table. We will now add a counter to the table so that we can plot the values over time to see if any patterns emerge. 
+```{r}
+count=seq(1:78377)
+mor1scat = mor1
+mor1scat$Count=count
+countnorm=seq(1:22714)
+mor1normscat=mor1norm
+mor1normscat$Count=countnorm
+plot(select(mor1scat,Count,R1voltAngleA),type='l')
+```
+Here you can see that there seems to be a sine wave like pattern but it is very hard to tell due to the number of values we are representing. As such we will look at the first 5000 variables to get a better view. 
+```{r}
+plot(select(mor1scat,Count,R1voltAngleA)[1:5000,],type='l')
+plot(select(mor1scat,Count,R1voltMagA)[1:5000,],type='l')
+plot(select(mor1scat,Count,R1curAngleA)[1:5000,],type='l')
+plot(select(mor1scat,Count,R1curMagA)[1:5000,],type='l')
+```
+Here we can see that the voltage and current angles both roughly correlate to a sine wave. This is to be expected, as generators produce alternating current which is transmitted as a sine wave. As such we can start any model searching using a sine function to approximate the angles. Looking at the magnitudes, these remain more consistently around an average value, so we can do some analyses of outlier values. In the voltage magnitude graph, we can see a large drop in at about 3000, which could signal an attack at that point. To check this we can have a look at the same graph for the natural state.
+```{r}
+plot(select(mor1normscat,Count,R1voltMagA)[1:5000,],type='l')
+```
+As you can see, there is no large drop (notice the change in scale). As such we can already tell that an attack has taken place from the data we have so far. 
+
+```{r}
+par(mfrow=c(4,2),pin=c(1,1))
+boxplot(mor1$R1voltAngleA)
+boxplot(mor1norm$R1voltAngleA)
+boxplot(mor1$R1voltMagA)
+boxplot(mor1norm$R1voltMagA)
+boxplot(mor1$R1curAngleA)
+boxplot(mor1norm$R1curAngleA)
+boxplot(mor1$R1curMagA)
+boxplot(mor1norm$R1curMagA)
+```
+Here we have all the normal traffic packets on the right and the complete traffic dataset on the left. We can see that all the plots look similar to their counterparts on the same row. Although we can see that there is a slight variation in R1voltMagA (second row), with the most noticeable difference being the number of outlier. The combined traffic shows a large number of extreme outliers near 0, while the normal traffic only shows one. This signifies that R1voltMagA could be a significant indicator for knowing when an attack has taken place. 
+
+To get a clearer view of these we will look at the 5 number summary of the data.
+```{r}
+summary(mor1[,1:4])
+summary(mor1norm[,1:4])
+```
+The 5 number summary, despite being more numerically detailed, does not reflect some of the observations that we observed in the box plots. This is because much of the complete data has a similar distribution to the normal traffic and so these data entries remain very similar. However, this information combined with the box plots show us that we should focus on the number of extreme outliers rather than main sample statistics such as the mean. This makes sense as attacks are likely to only occur rarely and so would not likely have a major impact on such statistics. 
+
+We will now have a look at how the attacks affect the standard deviation of these attributes.
+```{r}
+sd(mor1$R1voltAngleA)
+sd(mor1norm$R1voltAngleA)
+sd(mor1$R1voltMagA)
+sd(mor1norm$R1voltMagA)
+sd(mor1$R1curAngleA)
+sd(mor1norm$R1curAngleA)
+sd(mor1$R1curMagA)
+sd(mor1norm$R1curMagA)
+```
+Here we can see that as expected the majority of the sd's remain similar between the combined and normal datasets, except for R1voltMagA. For R1voltMagA we can see the combined dataset has a much greater standard deviation than the normal dataset, which confirms our previous idea that using extreme values for R1voltMagA could provide insight into possible attacks.
 
 ##### Existing Analysis
+I was unable to find any exploratory data analysis of this dataset. However I was able to find 4 papers, which detailed approaches of model creation using this dataset, including the use of universal ML algorithms as well as new and innovative, which would provide a comparison for any models that I create. Unfortunately, none of the papers provide the code that was used, although there was some pseudocode and I am sure I will be able to find the code for the universal ML algorithms somewhere else on the internet. The papers that I found are linked below:
 
-##### Further Analysis
+* http://www.google.com/url?q=http%3A%2F%2Fieeexplore.ieee.org%2Fstamp%2Fstamp.jsp%3Ftp%3D%26arnumber%3D7063234%26isnumber%3D5446437&sa=D&sntz=1&usg=AFQjCNHeeoPuTjeriTPq7tBmflmcM73I5Q
+* http://www.google.com/url?q=http%3A%2F%2Fieeexplore.ieee.org%2Fstamp%2Fstamp.jsp%3Ftp%3D%26arnumber%3D7081776%26isnumber%3D4389054&sa=D&sntz=1&usg=AFQjCNHzYCuqt6ym0QeoBFZJ33SucZhk1w
+* http://www.google.com/url?q=http%3A%2F%2Fijns.jalaxy.com.tw%2Fcontents%2Fijns-v17-n2%2Fijns-2015-v17-n2-p174-188.pdf&sa=D&sntz=1&usg=AFQjCNEh_913oiRMy7psWWJpFvzLNnMfJw
+* https://www.google.com/url?q=https%3A%2F%2Fdoi.org%2F10.1109%2FISRCS.2014.6900095&sa=D&sntz=1&usg=AFQjCNHs7o1yGOJyhJBfRcsWfKvwmLetbA
+
+Possible future analysis:
+
+* Numerical analysis for each data value
+* Analyse trends across IDEs such as correlation and covariance
+* Analyse trends across internal IDE attributes (e.g. R1voltMagA and R1voltMagB) such as correlation and covariance
+* Create classification models for individual attributes -> classification models across all attributes
 
 ##### Conclusions
-
-#### Set 3 
-
-##### Initial exploration
-
-##### Existing Analysis
-
-##### Further Analysis
-
-##### Conclusions
-
+This dataset was very extensive with a large number of numerical attributes. On top of this, the data contains a marker for whether it is normal or attack based data. Both of these make this dataset very useful for further analysis and model training. The models created on this dataset should provide a good standard for other power plant based environments, or at least as good as they can be, due to the variation of environments. While this particular dataset (Morris 1) was very useful, there are 4 other datasets each created by the same person in the same lab, and while further research into these would be recommended before use, these could be just as useful as this dataset.
 
 ## References
 
-4SICS Geek Lounge - https://www.netresec.com/?page=PCAP4SICS
-4SICS Geek Lounge - https://www.academia.edu/37587881/A_Comparison_of_ICS_Datasets_for_Security_Research_based_on_Attack_Paths
+* 4SICS Geek Lounge - https://www.netresec.com/?page=PCAP4SICS  
+* Tommy Morris Data Set - https://sites.google.com/a/uah.edu/tommy-morris-uah/ics-data-sets
+* All Data Sets - https://www.academia.edu/37587881/A_Comparison_of_ICS_Datasets_for_Security_Research_based_on_Attack_Paths
+* All Data Sets - https://nostarch.com/bookofr
+
 

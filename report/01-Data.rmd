@@ -15,7 +15,9 @@ The brief was to:
 
 ```{r}
 if (!require("fs")) install.packages("fs")
+if (!require("googledrive")) install.packages("googledrive")
 library("fs")
+library("googledrive")
 ```
 
 
@@ -37,14 +39,84 @@ We place raw data in the `data` folder of our root. (Note: we are in the /report
 
 ### Get the data
 ```{r}
-download.file("https://drive.google.com/file/d/14O_LdaJ-2lT7BN5pVjaFrtymk8L_tzRF/view?usp=sharing",path_wd("..","data","raw","4SICS.csv"))
-```
+destfile <- "D:/Adam/Bristol/Units/Year 4/Data Science Toolbox/Assessments/Asessment 0/DST---Assessment-0-Group-2/data/raw/4SICS.csv"
+drive_download(as_id(""))
+
+``` 
+
 
 ### Get the names for the data
+```{r}
+cnames=c('R1voltAngleA','R1voltAngleB','R1voltAngleC','R1voltMagA',
+    'R1voltMagB','R1voltMagC','R1curAngleA','R1curAngleB','R1curAngleC',
+    'R1curMagA','R1curMagB','R1curMagC','R1posVoltAngle',
+    'R1negVoltAngle','R1zeroVoltAngle','R1posVoltMag','R1negVoltMag',
+    'R1zeroVoltMag','R1posCurAngle','R1negCurAngle','R1zeroCurAngle',
+    'R1posCurMag','R1negCurMag','R1zeroCurMag','R1relayFreq','R1relayDeltaFreq',
+    'R1relayImp','R1relayImpAngle','R1status','R2voltAngleA','R2voltAngleB','R2voltAngleC','R2voltMagA',
+    'R2voltMagB','R2voltMagC','R2curAngleA','R2curAngleB','R2curAngleC',
+    'R2curMagA','R2curMagB','R2curMagC','R2posVoltAngle',
+    'R2negVoltAngle','R2zeroVoltAngle','R2posVoltMag','R2negVoltMag',
+    'R2zeroVoltMag','R2posCurAngle','R2negCurAngle','R2zeroCurAngle',
+    'R2posCurMag','R2negCurMag','R2zeroCurMag','R2relayFreq','R2relayDeltaFreq',
+    'R2relayImp','R2relayImpAngle','R2status','R3voltAngleA','R3voltAngleB','R3voltAngleC','R3voltMagA',
+    'R3voltMagB','R3voltMagC','R3curAngleA','R3curAngleB','R3curAngleC',
+    'R3curMagA','R3curMagB','R3curMagC','R3posVoltAngle',
+    'R3negVoltAngle','R3zeroVoltAngle','R3posVoltMag','R3negVoltMag',
+    'R3zeroVoltMag','R3posCurAngle','R3negCurAngle','R3zeroCurAngle',
+    'R3posCurMag','R3negCurMag','R3zeroCurMag','R3relayFreq','R3relayDeltaFreq',
+    'R3relayImp','R3relayImpAngle','R3status','R4voltAngleA','R4voltAngleB','R4voltAngleC','R4voltMagA',
+    'R4voltMagB','R4voltMagC','R4curAngleA','R4curAngleB','R4curAngleC',
+    'R4curMagA','R4curMagB','R4curMagC','R4posVoltAngle',
+    'R4negVoltAngle','R4zeroVoltAngle','R4posVoltMag','R4negVoltMag',
+    'R4zeroVoltMag','R4posCurAngle','R4negCurAngle','R4zeroCurAngle',
+    'R4posCurMag','R4negCurMag','R4zeroCurMag','R4relayFreq','R4relayDeltaFreq',
+    'R4relayImp','R4relayImpAngle','R4status','contPanLog1','contPanLog2',
+    'contPanLog3','contPanLog4','relayLog1','relayLog2','relayLog3',
+    'relayLog4','snortLog1','snortLog2','snortLog3','snortLog4',
+    'marker')
+write.table(cnames,
+            file=path_wd("..","data","raw","Morris1.names"),
+            row.names=FALSE,
+            col.names=FALSE,
+            quote=FALSE
+            )
+```
 
+```{r}
+cnames=c('Packet Number','Time','Source IP','Destination IP',
+    'Protocol','Packet Length','Info')
+write.table(cnames,
+            file=path_wd("..","data","raw","4SICS.names"),
+            row.names=FALSE,
+            col.names=FALSE,
+            quote=FALSE
+            )
+```
 
 ### Create the processed data output.
 
+```{r}
+DF=read.csv(path_wd("..","data","raw","data1.csv"),header=TRUE)
+for (n in c(2:15)){
+  fn <- paste("data",n,".csv",sep="")
+  path_wd("..","data","raw",fn)
+  df=read.csv(path_wd("..","data","raw",fn),header=TRUE)
+  DF=rbind(DF,df)
+}
+colnames(DF)=cnames
+write.csv(DF,
+            path_wd("..","data","processed","Morris1.csv"),
+            quote=FALSE,row.names=FALSE)
+```
+
+```{r}
+DF=read.csv(path_wd("..","data","raw","4SICS.csv"),header=TRUE)
+colnames(DF)=cnames
+write.csv(DF,
+            path_wd("..","data","processed","4SICS.csv"),
+            quote=FALSE,row.names=FALSE)
+```
 
 ### Summary:
 
