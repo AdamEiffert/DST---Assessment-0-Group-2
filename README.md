@@ -4,7 +4,7 @@
 
 * Adam Eiffert
 * Bill Nunn
-* Oliver Stonehouse-Kline
+* Oliver Stonehouse Klyne
 
 This project has an equal equity split betwen the three members.
 
@@ -17,7 +17,7 @@ All report content is in the directory:
 The report takes the following structure:
 
 * 01-Introduction.Rmd
-* 02-Oliver_Analysis.ipynb
+* 02-Oliver_Analysis.Rmd
 * 03-URL_Analysis.Rmd
 * 04-Adam_Analysis.Rmd
 
