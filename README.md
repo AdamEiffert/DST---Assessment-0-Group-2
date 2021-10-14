@@ -19,7 +19,7 @@ The report takes the following structure:
 * 01-Introduction.Rmd
 * 02-Botnet_Analysis.Rmd
 * 03-URL_Analysis.Rmd
-* 04-Adam_Analysis.Rmd
+* 04-ICS_Analysis.Rmd
 
 With html output of the Rmd content included for convenience.
 
